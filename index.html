@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabs Pay — Feature Prioritization Calculator</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e7e9ee; --muted:#9aa3b2; --accent:#5b8cff; --accent2:#3a6ad4;
+    --green:#37c97a; --blue:#5b8cff; --amber:#e8b339; --red:#e8625a; --gray:#6b7280;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.45;font-size:14px}
+  header{padding:22px 26px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 6px;font-size:20px;font-weight:650}
+  .sub{color:var(--muted);font-size:13px;max-width:820px;margin-bottom:12px}
+  .weights{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--text)}
+  .chip.divisor{border-color:#4a5568}
+
+
+  /* Layout */
+  .wrap{max-width:1100px;margin:0 auto;padding:22px 26px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  button{font-family:inherit;font-size:13px;cursor:pointer;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);padding:8px 14px;transition:.15s}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent2);border-color:var(--accent2)}
+  button.primary:hover{background:var(--accent)}
+  button.ghost{background:transparent}
+  button.danger:hover{border-color:var(--red);color:var(--red)}
+
+  /* Feature card */
+  .feature{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:18px;overflow:hidden}
+  .fhead{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--panel2);border-bottom:1px solid var(--line)}
+  .fhead input.fname{flex:1;font-size:15px;font-weight:600}
+  .badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap}
+  .b-mvp{background:rgba(55,201,122,.15);color:var(--green);border:1px solid rgba(55,201,122,.4)}
+  .b-v11{background:rgba(91,140,255,.15);color:var(--blue);border:1px solid rgba(91,140,255,.4)}
+  .b-back{background:rgba(232,179,57,.15);color:var(--amber);border:1px solid rgba(232,179,57,.4)}
+  .b-decl{background:rgba(232,98,90,.15);color:var(--red);border:1px solid rgba(232,98,90,.4)}
+  .score-pill{display:flex;flex-direction:column;align-items:center;background:var(--bg);border-radius:8px;padding:4px 12px;min-width:68px;text-align:center}
+  .score-pill .ps{font-size:18px;font-weight:700;line-height:1.2}
+  .score-pill .vs{font-size:10px;color:var(--muted);margin-top:1px}
+
+  .fbody{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .col{display:flex;flex-direction:column;gap:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+  input[type=text],input[type=number],textarea,select{width:100%;background:var(--bg);border:1px solid var(--line);
+    color:var(--text);border-radius:7px;padding:8px 10px;font-family:inherit;font-size:13px}
+  textarea{resize:vertical;min-height:46px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+  .field{margin:0}
+  .secttl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:6px}
+
+  /* Merchants */
+  .merchants{display:flex;flex-direction:column;gap:7px}
+  .mrow{display:flex;gap:8px;align-items:center}
+  .mrow input.mname{flex:2}
+  .mrow input.macv{flex:1}
+  .mrow button{padding:6px 9px;line-height:1}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+
+  /* Selects */
+  .factor-group{display:flex;flex-direction:column;gap:10px}
+  .factor-row{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .factor-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+  .factor-label span{color:var(--text);font-weight:600;text-transform:none;letter-spacing:0;font-size:12px}
+  .factor-row select{margin:0}
+  .factor-row.cost-row{border-color:#4a5568}
+  .factor-row.cost-row .factor-label{color:#60a5fa}
+
+  /* Breakdown */
+  .breakdown{grid-column:1 / -1;border-top:1px solid var(--line);padding-top:14px;margin-top:2px}
+  table.bd{width:100%;border-collapse:collapse;font-size:13px}
+  table.bd th,table.bd td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+  table.bd th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  table.bd td.num{text-align:right;font-variant-numeric:tabular-nums}
+  table.bd tr.subtotal td{border-top:1px solid var(--line);border-bottom:2px solid var(--line)}
+  table.bd tr.final td{background:rgba(255,255,255,.03)}
+  .raw{display:inline-block;min-width:20px;text-align:center;font-weight:600}
+  .score-box{display:inline-flex;flex-direction:column;align-items:flex-end}
+  .score-box .ps2{font-size:16px;font-weight:700}
+  .score-box .vs2{font-size:11px;color:var(--muted)}
+
+  /* Summary */
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:8px}
+  .summary h2{margin:0 0 14px;font-size:16px}
+  table.rank{width:100%;border-collapse:collapse;font-size:13px}
+  table.rank th,table.rank td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  table.rank th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  table.rank td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);text-align:center;padding:30px}
+  .hint{font-size:11px;color:var(--muted);margin-top:3px}
+
+  @media(max-width:780px){.fbody{grid-template-columns:1fr}}
+  @media print{
+    body{background:#fff;color:#000}
+    .toolbar,.fhead button,.mrow button,.addm,.del{display:none}
+    .feature,.summary{border-color:#bbb;break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tabs Pay — Feature Prioritization Calculator</h1>
+  <div class="sub">Scores out-of-scope feature requests against the Tabs Pay Feature Prioritization Framework. Enter merchant ACVs and factor ratings; the value score, priority score, and decision are derived automatically.</div>
+  <div class="weights">
+    <span class="chip">Revenue at stake <b>30%</b></span>
+    <span class="chip">Breadth / base impact <b>25%</b></span>
+    <span class="chip">Growth / expansion <b>25%</b></span>
+    <span class="chip">Strategic urgency <b>20%</b></span>
+    <span class="chip divisor">Cost <b>÷ (6 − Cost)</b></span>
+    <span class="chip">Max score <b>5.0</b></span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <button class="primary" onclick="addFeature()">+ Add feature</button>
+    <button class="ghost" onclick="loadExample()">Load example</button>
+    <button class="ghost" onclick="window.print()">Print / PDF</button>
+    <button class="ghost danger" onclick="clearAll()">Clear all</button>
+  </div>
+
+  <div id="features"></div>
+
+  <div class="summary">
+    <h2>Ranked summary</h2>
+    <div id="rank"></div>
+  </div>
+</div>
+
+<script>
+// ── Framework logic ────────────────────────────────────────────────────────
+
+// Factor 1: Revenue at stake — auto-scored from combined ACV
+function revenueScore(dollars){
+  if(dollars >  500000) return 5;
+  if(dollars >= 200000) return 4;
+  if(dollars >=  75000) return 3;
+  if(dollars >=  25000) return 2;
+  return 1;
+}
+
+// Priority Score = Value Score ÷ (6 - Cost)
+function compute(f){
+  const combinedACV = f.merchants.reduce((s,m)=>s+(Number(m.acv)||0),0);
+  const merchantCount = f.merchants.filter(m=>m.name.trim()!==''||Number(m.acv)>0).length;
+  const revRaw     = revenueScore(combinedACV);
+  const breadthRaw = Number(f.breadth  || 1);
+  const growthRaw  = Number(f.growth   || 1);
+  const stratRaw   = Number(f.strat    || 1);
+  const costRaw    = Number(f.cost     || 3);
+  const valueScore = revRaw*0.30 + breadthRaw*0.25 + growthRaw*0.25 + stratRaw*0.20;
+  const costDivisor = 6 - costRaw;
+  const priorityScore = valueScore / costDivisor;
+  return { combinedACV, merchantCount, revRaw, breadthRaw, growthRaw, stratRaw, costRaw, valueScore, priorityScore };
+}
+
+function decisionFor(ps){
+  if(ps >= 4.0) return {label:'Build for MVP', cls:'b-mvp'};
+  if(ps >= 3.0) return {label:'Defer to v1.1', cls:'b-v11'};
+  if(ps >= 2.0) return {label:'Backlog',        cls:'b-back'};
+  return               {label:'Decline',         cls:'b-decl'};
+}
+
+const money = n => '$'+(Number(n)||0).toLocaleString('en-US');
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+let features = [];
+let uid = 1;
+
+function blankFeature(){
+  return {
+    id: uid++, name:'', desc:'',
+    merchants: [{name:'',acv:''}],
+    breadth:'3', growth:'1', strat:'1', cost:'3',
+    engReviewer:'', notes:''
+  };
+}
+
+// ── Select option sets ─────────────────────────────────────────────────────
+
+const BREADTH_OPTS = [
+  {v:'5', t:'5 — Platform enabler or default behavior that benefits most of the base'},
+  {v:'4', t:'4 — Benefits many merchants (~20+), a major segment, or reduces support load broadly'},
+  {v:'3', t:'3 — Benefits a meaningful subset (~5–20 merchants) or a clear cohort'},
+  {v:'2', t:'2 — Benefits a small number of merchants (2–4) beyond the requestor'},
+  {v:'1', t:'1 — Primarily a single-merchant customization / edge case'},
+];
+const GROWTH_OPTS = [
+  {v:'5', t:'5 — Unlocks a new segment or removes a widespread no-go blocker (clear pipeline attribution)'},
+  {v:'4', t:'4 — Frequently in sales cycles; expected to materially improve conversion or reduce cycle time'},
+  {v:'3', t:'3 — Occasionally requested; credible improvement to sellability but not a primary blocker'},
+  {v:'2', t:'2 — Minor GTM benefit; helpful but unlikely to move metrics'},
+  {v:'1', t:'1 — No growth or expansion signal (purely convenience)'},
+];
+const STRAT_OPTS = [
+  {v:'5', t:'5 — Confirmed churn / lost deal / regulatory deadline without a viable workaround'},
+  {v:'4', t:'4 — Blocks adoption for a key merchant or segment; workaround is costly or fragile'},
+  {v:'3', t:'3 — Active competitive gap; cited in win/loss or recurring objections'},
+  {v:'2', t:'2 — Nice-to-have but plausibly differentiating or reduces operational risk'},
+  {v:'1', t:'1 — No urgency; no competitive or risk signal'},
+];
+const COST_OPTS = [
+  {v:'5', t:'5 — ≤ 1 day total; minimal ongoing maintenance'},
+  {v:'4', t:'4 — 2–5 days; low ongoing maintenance'},
+  {v:'3', t:'3 — 1–2 weeks; moderate maintenance or known follow-ons'},
+  {v:'2', t:'2 — 3–8 weeks; meaningful maintenance / on-call / testing burden'},
+  {v:'1', t:'1 — > 8 weeks or requires architectural change / long-running program of work'},
+];
+
+function selectHtml(fid, field, val, opts){
+  return `<select onchange="upd(${fid},'${field}',this.value)">
+    ${opts.map(o=>`<option value="${o.v}" ${val===o.v?'selected':''}>${esc(o.t)}</option>`).join('')}
+  </select>`;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+
+function render(){
+  const host = document.getElementById('features');
+  host.innerHTML = '';
+  if(features.length===0){
+    host.innerHTML='<div class="empty">No features yet. Click <b>+ Add feature</b> or <b>Load example</b>.</div>';
+  }
+  features.forEach(f=>host.appendChild(featureEl(f)));
+  renderRank();
+  persist();
+}
+
+function featureEl(f){
+  const c = compute(f);
+  const d = decisionFor(c.priorityScore);
+  const el = document.createElement('div');
+  el.className = 'feature';
+
+  el.innerHTML = `
+    <div class="fhead">
+      <input class="fname" type="text" placeholder="Feature name" value="${esc(f.name)}" oninput="upd(${f.id},'name',this.value)">
+      <div class="score-pill">
+        <span class="ps">${c.priorityScore.toFixed(2)}</span>
+        <span class="vs">value ${c.valueScore.toFixed(2)}</span>
+      </div>
+      <span class="badge ${d.cls}">${d.label}</span>
+      <button class="danger del" onclick="removeFeature(${f.id})">Delete</button>
+    </div>
+
+    <div class="fbody">
+      <!-- Left column -->
+      <div class="col">
+        <div class="field">
+          <label>Description</label>
+          <textarea oninput="upd(${f.id},'desc',this.value)" placeholder="What is the request and why was it raised?">${esc(f.desc)}</textarea>
+        </div>
+
+        <div>
+          <div class="secttl">Requesting merchants &amp; ACV</div>
+          <div class="hint">Combined ACV auto-scores Factor 1 (Revenue at stake). Paste the merchant list or add rows manually. ACV optional for pipeline deals — leave blank if unknown.</div>
+          <div class="merchants" id="m-${f.id}">
+            ${f.merchants.map((m,i)=>merchantRow(f.id,m,i)).join('')}
+          </div>
+          <div style="display:flex;gap:8px;margin-top:7px">
+            <button class="ghost addm" onclick="addMerchant(${f.id})">+ Add merchant</button>
+            <button class="ghost" onclick="pasteMerchants(${f.id})">Paste list</button>
+          </div>
+          <div class="note">
+            Combined ACV: <b>${money(c.combinedACV)}</b> &middot;
+            ${c.merchantCount} merchant(s) &middot;
+            Revenue score: <b>${c.revRaw}/5</b>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Eng reviewer</label>
+          <input type="text" placeholder="Engineering lead name" value="${esc(f.engReviewer)}" oninput="upd(${f.id},'engReviewer',this.value)">
+        </div>
+        <div class="field">
+          <label>Notes / dependency &amp; capacity check</label>
+          <textarea oninput="upd(${f.id},'notes',this.value)" placeholder="Owner, week-level estimate, dependencies, next review date…">${esc(f.notes)}</textarea>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="col">
+        <div class="factor-group">
+          <div class="factor-row">
+            <div class="factor-label">Factor 2 — <span>Breadth / base impact (25%)</span></div>
+            ${selectHtml(f.id,'breadth',f.breadth,BREADTH_OPTS)}
+          </div>
+          <div class="factor-row">
+            <div class="factor-label">Factor 3 — <span>Growth / expansion signal (25%)</span></div>
+            ${selectHtml(f.id,'growth',f.growth,GROWTH_OPTS)}
+          </div>
+          <div class="factor-row">
+            <div class="factor-label">Factor 4 — <span>Strategic urgency (20%)</span></div>
+            ${selectHtml(f.id,'strat',f.strat,STRAT_OPTS)}
+          </div>
+          <div class="factor-row cost-row">
+            <div class="factor-label">Factor 5 — <span>Cost: build + maintenance (divisor)</span></div>
+            ${selectHtml(f.id,'cost',f.cost,COST_OPTS)}
+            <div class="hint" style="margin-top:6px">Includes long-tail support, on-call, upgrade burden — not just build time. Higher = cheaper.</div>
+          </div>
+        </div>
+      </div>
+
+      ${breakdownEl(f,c)}
+    </div>`;
+  return el;
+}
+
+function merchantRow(fid,m,i){
+  return `<div class="mrow">
+    <input class="mname" type="text" placeholder="Merchant / source" value="${esc(m.name)}" oninput="updM(${fid},${i},'name',this.value)">
+    <input class="macv" type="number" min="0" placeholder="ACV $" value="${esc(m.acv)}" oninput="updM(${fid},${i},'acv',this.value)">
+    <button class="danger" onclick="removeMerchant(${fid},${i})" title="Remove">&times;</button>
+  </div>`;
+}
+
+function breakdownEl(f,c){
+  const divisor = 6 - c.costRaw;
+  return `<div class="breakdown">
+    <table class="bd">
+      <tr>
+        <th>Factor</th>
+        <th>Raw</th>
+        <th class="num">Weight</th>
+        <th class="num">Weighted</th>
+      </tr>
+      <tr>
+        <td>Revenue at stake (${money(c.combinedACV)}) <span style="color:var(--muted);font-size:11px">— auto from ACV</span></td>
+        <td><span class="raw">${c.revRaw}</span></td>
+        <td class="num">0.30</td>
+        <td class="num">${(c.revRaw*0.30).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td>Breadth / base impact</td>
+        <td><span class="raw">${c.breadthRaw}</span></td>
+        <td class="num">0.25</td>
+        <td class="num">${(c.breadthRaw*0.25).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td>Growth / expansion signal</td>
+        <td><span class="raw">${c.growthRaw}</span></td>
+        <td class="num">0.25</td>
+        <td class="num">${(c.growthRaw*0.25).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td>Strategic urgency</td>
+        <td><span class="raw">${c.stratRaw}</span></td>
+        <td class="num">0.20</td>
+        <td class="num">${(c.stratRaw*0.20).toFixed(2)}</td>
+      </tr>
+      <tr class="subtotal">
+        <td><b>Value Score</b></td>
+        <td></td>
+        <td class="num" style="color:var(--muted);font-size:12px">sum</td>
+        <td class="num"><b>${c.valueScore.toFixed(2)}</b></td>
+      </tr>
+      <tr>
+        <td>Cost (build + maintenance) <span style="color:var(--muted);font-size:11px">— divisor: 6 − ${c.costRaw} = ${divisor}</span></td>
+        <td><span class="raw">${c.costRaw}</span></td>
+        <td class="num" style="color:var(--muted);font-size:12px">÷ ${divisor}</td>
+        <td class="num">&nbsp;</td>
+      </tr>
+      <tr class="final">
+        <td><b>Priority Score</b> <span style="color:var(--muted);font-size:11px">= ${c.valueScore.toFixed(2)} ÷ ${divisor}</span></td>
+        <td></td>
+        <td></td>
+        <td class="num">
+          <div class="score-box">
+            <span class="ps2">${c.priorityScore.toFixed(2)}</span>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function renderRank(){
+  const host = document.getElementById('rank');
+  const rows = features.filter(f=>f.name.trim()!=='').map(f=>({f,c:compute(f)}));
+  if(rows.length===0){
+    host.innerHTML='<div class="empty">Add and name features to see the ranking.</div>';
+    return;
+  }
+  rows.sort((a,b)=>b.c.priorityScore-a.c.priorityScore);
+  host.innerHTML = `<table class="rank">
+    <tr>
+      <th>#</th>
+      <th>Feature</th>
+      <th class="num">Combined ACV</th>
+      <th class="num">Value Score</th>
+      <th class="num">Priority Score</th>
+      <th>Decision</th>
+    </tr>
+    ${rows.map((r,i)=>{
+      const d=decisionFor(r.c.priorityScore);
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${esc(r.f.name)}</td>
+        <td class="num">${money(r.c.combinedACV)}</td>
+        <td class="num">${r.c.valueScore.toFixed(2)}</td>
+        <td class="num"><b>${r.c.priorityScore.toFixed(2)}</b></td>
+        <td><span class="badge ${d.cls}">${d.label}</span></td>
+      </tr>`;
+    }).join('')}
+  </table>`;
+}
+
+// ── Mutations ──────────────────────────────────────────────────────────────
+
+function upd(id,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f[k]=v; render(); }
+function updM(id,i,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f.merchants[i][k]=v; render(); }
+function addMerchant(id){ const f=features.find(x=>x.id===id); f.merchants.push({name:'',acv:''}); render(); }
+function removeMerchant(id,i){
+  const f=features.find(x=>x.id===id);
+  f.merchants.splice(i,1);
+  if(f.merchants.length===0) f.merchants.push({name:'',acv:''});
+  render();
+}
+function pasteMerchants(id){
+  const f=features.find(x=>x.id===id); if(!f)return;
+  const txt=prompt('Paste one merchant per line as "Name | ACV" (ACV optional).\nExample:\nHarness Wealth | 35000\nNift |');
+  if(!txt)return;
+  const rows=txt.split(/\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const i=l.lastIndexOf('|');
+    if(i<0) return {name:l,acv:''};
+    const a=l.slice(i+1).replace(/[^0-9.]/g,'');
+    return {name:l.slice(0,i).trim(),acv:a===''?'':Number(a)};
+  });
+  if(rows.length===0)return;
+  f.merchants=f.merchants.filter(m=>m.name.trim()!==''||String(m.acv)!=='');
+  f.merchants.push(...rows);
+  render();
+}
+function addFeature(){ features.push(blankFeature()); render(); }
+function removeFeature(id){ features=features.filter(x=>x.id!==id); render(); }
+function clearAll(){ if(confirm('Remove all features?')){ features=[]; render(); } }
+
+// ── Persistence ────────────────────────────────────────────────────────────
+
+const KEY='tabsPayPrioritizer_v2';
+function persist(){ try{ localStorage.setItem(KEY,JSON.stringify({uid,features})); }catch(e){} }
+function restore(){
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY));
+    if(d&&d.features){ features=d.features; uid=d.uid||features.length+1; }
+  }catch(e){}
+}
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Example ────────────────────────────────────────────────────────────────
+
+function loadExample(){
+  features = [
+    {
+      id:uid++, name:'Customer-initiated Autopay',
+      desc:"Let merchants' customers opt in to automatic recurring invoice payment via the payment portal.",
+      merchants:[{name:'Harness Wealth',acv:35000},{name:'PAIV',acv:''},{name:'TotemVC (prospect)',acv:''},{name:'RevParts',acv:''},{name:'LuxSci',acv:''}],
+      breadth:'3', growth:'3', strat:'3', cost:'3',
+      engReviewer:'', notes:'Requested across 5+ merchants. Reassess if Harness closes.'
+    },
+    {
+      id:uid++, name:'International Credit Cards',
+      desc:'Accept cards issued outside the US / multi-currency settlement.',
+      merchants:[{name:'Nift',acv:609000},{name:'MagicSchool',acv:''},{name:'Mux',acv:''},{name:'RevParts',acv:''}],
+      breadth:'3', growth:'4', strat:'3', cost:'2',
+      engReviewer:'', notes:'Nift is the primary driver at $609K. Out of MVP scope per PRD; reassess post-GA.'
+    },
+    {
+      id:uid++, name:'3DS Authentication',
+      desc:'Internally-flagged: can 3DS reduce failed payment volume on Adyen?',
+      merchants:[{name:'(internal — no requestor)',acv:''}],
+      breadth:'5', growth:'2', strat:'4', cost:'3',
+      engReviewer:'', notes:'Adyen hard dependency check required. May be override-eligible.'
+    },
+    {
+      id:uid++, name:'Settlement: T+1 at Premium',
+      desc:'Faster next-day payout offered as a paid tier (default is T+2).',
+      merchants:[{name:'(internal — no requestor)',acv:''}],
+      breadth:'3', growth:'3', strat:'2', cost:'2',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'OTP for Customer Payment Portal',
+      desc:'One-time passcode authentication when a customer opens the payment portal link.',
+      merchants:[{name:'(internal — no requestor)',acv:''}],
+      breadth:'4', growth:'2', strat:'3', cost:'3',
+      engReviewer:'', notes:''
+    },
+  ];
+  render();
+}
+
+restore();
+render();
+</script>
+</body>
+</html>
