@@ -240,6 +240,7 @@ function featureEl(f){
   const d = decisionFor(c.priorityScore);
   const el = document.createElement('div');
   el.className = 'feature';
+  el.dataset.fid = f.id;
 
   el.innerHTML = `
     <div class="fhead">
@@ -324,8 +325,12 @@ function merchantRow(fid,m,i){
 }
 
 function breakdownEl(f,c){
+  return `<div class="breakdown">${breakdownInner(f,c)}</div>`;
+}
+
+function breakdownInner(f,c){
   const divisor = 6 - c.costRaw;
-  return `<div class="breakdown">
+  return `
     <table class="bd">
       <tr>
         <th>Factor</th>
@@ -379,8 +384,7 @@ function breakdownEl(f,c){
           </div>
         </td>
       </tr>
-    </table>
-  </div>`;
+    </table>`;
 }
 
 function renderRank(){
@@ -416,8 +420,30 @@ function renderRank(){
 
 // ── Mutations ──────────────────────────────────────────────────────────────
 
-function upd(id,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f[k]=v; render(); }
-function updM(id,i,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f.merchants[i][k]=v; render(); }
+function upd(id,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f[k]=v; refreshDerived(id); }
+function updM(id,i,k,v){ const f=features.find(x=>x.id===id); if(!f)return; f.merchants[i][k]=v; refreshDerived(id); }
+
+// Update only the derived/computed displays for a feature, leaving inputs (and
+// their focus) intact. Used for live typing so the field keeps focus.
+function refreshDerived(id){
+  const f=features.find(x=>x.id===id); if(!f)return;
+  const c=compute(f);
+  const d=decisionFor(c.priorityScore);
+  const el=document.querySelector(`.feature[data-fid="${id}"]`);
+  if(el){
+    el.querySelector('.score-pill .ps').textContent=c.priorityScore.toFixed(2);
+    el.querySelector('.score-pill .vs').textContent='value '+c.valueScore.toFixed(2);
+    const badge=el.querySelector('.fhead .badge');
+    badge.className='badge '+d.cls;
+    badge.textContent=d.label;
+    const note=el.querySelector('.note');
+    if(note) note.innerHTML=`Combined ACV: <b>${money(c.combinedACV)}</b> &middot; ${c.merchantCount} merchant(s) &middot; Revenue score: <b>${c.revRaw}/5</b>`;
+    const bd=el.querySelector('.breakdown');
+    if(bd) bd.innerHTML=breakdownInner(f,c);
+  }
+  renderRank();
+  persist();
+}
 function addMerchant(id){ const f=features.find(x=>x.id===id); f.merchants.push({name:'',acv:''}); render(); }
 function removeMerchant(id,i){
   const f=features.find(x=>x.id===id);
@@ -440,7 +466,7 @@ function pasteMerchants(id){
   f.merchants.push(...rows);
   render();
 }
-function addFeature(){ features.push(blankFeature()); render(); }
+function addFeature(){ features.unshift(blankFeature()); render(); }
 function removeFeature(id){ features=features.filter(x=>x.id!==id); render(); }
 function clearAll(){ if(confirm('Remove all features?')){ features=[]; render(); } }
 
@@ -461,38 +487,59 @@ function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function loadExample(){
   features = [
     {
-      id:uid++, name:'Customer-initiated Autopay',
-      desc:"Let merchants' customers opt in to automatic recurring invoice payment via the payment portal.",
-      merchants:[{name:'Harness Wealth',acv:35000},{name:'PAIV',acv:''},{name:'TotemVC (prospect)',acv:''},{name:'RevParts',acv:''},{name:'LuxSci',acv:''}],
-      breadth:'3', growth:'3', strat:'3', cost:'3',
-      engReviewer:'', notes:'Requested across 5+ merchants. Reassess if Harness closes.'
-    },
-    {
-      id:uid++, name:'International Credit Cards',
-      desc:'Accept cards issued outside the US / multi-currency settlement.',
-      merchants:[{name:'Nift',acv:609000},{name:'MagicSchool',acv:''},{name:'Mux',acv:''},{name:'RevParts',acv:''}],
-      breadth:'3', growth:'4', strat:'3', cost:'2',
-      engReviewer:'', notes:'Nift is the primary driver at $609K. Out of MVP scope per PRD; reassess post-GA.'
-    },
-    {
-      id:uid++, name:'3DS Authentication',
-      desc:'Internally-flagged: can 3DS reduce failed payment volume on Adyen?',
-      merchants:[{name:'(internal — no requestor)',acv:''}],
-      breadth:'5', growth:'2', strat:'4', cost:'3',
-      engReviewer:'', notes:'Adyen hard dependency check required. May be override-eligible.'
-    },
-    {
-      id:uid++, name:'Settlement: T+1 at Premium',
-      desc:'Faster next-day payout offered as a paid tier (default is T+2).',
-      merchants:[{name:'(internal — no requestor)',acv:''}],
-      breadth:'3', growth:'3', strat:'2', cost:'2',
+      id:uid++, name:'Orchestration (Payrails)',
+      desc:'Orchestration (Payrails)',
+      merchants:[{name:'Placeholder',acv:10000}],
+      breadth:'1', growth:'2', strat:'1', cost:'1',
       engReviewer:'', notes:''
     },
     {
-      id:uid++, name:'OTP for Customer Payment Portal',
-      desc:'One-time passcode authentication when a customer opens the payment portal link.',
-      merchants:[{name:'(internal — no requestor)',acv:''}],
-      breadth:'4', growth:'2', strat:'3', cost:'3',
+      id:uid++, name:'BNPL',
+      desc:'Buy Now Pay Later',
+      merchants:[{name:'Placeholder',acv:10000}],
+      breadth:'1', growth:'1', strat:'1', cost:'1',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'Settlement: T+1 at Premium',
+      desc:'Settlement: T+1 at Premium instead of T+2',
+      merchants:[{name:'Placeholder',acv:10000}],
+      breadth:'1', growth:'2', strat:'1', cost:'4',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'3DS',
+      desc:'3D Secure Payments',
+      merchants:[{name:'Placeholder',acv:10000}],
+      breadth:'1', growth:'2', strat:'1', cost:'4',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'Customer-initiated Autopay',
+      desc:'',
+      merchants:[{name:'Harness Wealth',acv:7500},{name:'RevParts',acv:54000}],
+      breadth:'3', growth:'3', strat:'3', cost:'3',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'Enable Customer to Manage Payment Methods',
+      desc:'',
+      merchants:[{name:'Luxury Presence',acv:90000},{name:'Sprinto',acv:37000},{name:'Attentive',acv:20000},{name:'Netbox',acv:60000}],
+      breadth:'3', growth:'3', strat:'4', cost:'3',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'Allow Partial Payments / Pay Multiple Invoices',
+      desc:'',
+      merchants:[{name:'Nift',acv:18000},{name:'Carson',acv:18000},{name:'Attentive',acv:20000},{name:'Sprinto',acv:37000},{name:'RevParts',acv:54000},{name:'Netbox',acv:60000}],
+      breadth:'3', growth:'3', strat:'4', cost:'3',
+      engReviewer:'', notes:''
+    },
+    {
+      id:uid++, name:'International Credit Cards',
+      desc:'',
+      merchants:[{name:'Magic School',acv:30000},{name:'Nift',acv:18000},{name:'Mux',acv:117000},{name:'RevParts',acv:54000},{name:'AirOps',acv:79000},{name:'Anrok',acv:36000},{name:'Blumira',acv:270000},{name:'Attentive',acv:20000}],
+      breadth:'3', growth:'3', strat:'2', cost:'3',
       engReviewer:'', notes:''
     },
   ];
